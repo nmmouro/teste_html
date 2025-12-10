@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Painel de Movimentação - TV</title>
+<title>Painel da Frota - TV</title>
 
 <style>
 body{
@@ -87,7 +87,7 @@ tbody td{
 
 <header>
   <img src="sua-logo.png" class="logo"/>
-  <h1>Painel de Movimentação</h1>
+  <h1>Painel de Saídas</h1>
   <div class="clock" id="clock">--:--</div>
 </header>
 
@@ -95,7 +95,7 @@ tbody td{
   <div class="grid">
 
     <div class="card">
-      <h2>Movimentação diária</h2>
+      <h2>Movimentação da Frota</h2>
       <div id="frota"></div>
     </div>
 
@@ -113,20 +113,19 @@ tbody td{
 </div>
 
 <script>
-const SHEET_ID = "1avUZODKbGO0MfC2kh-YnuVHjZKUD9R3stnysR5o__JI";
+const SHEET_ID = "SEU_SHEET_ID";
 
 const ABAS = {
-  frota: "PAINEL",
+  frota: "LANÇAMENTOS",
   dia: "AGENDA DO DIA",
   social: "AGENDA SERVIÇO SOCIAL"
 };
 
-function urlAba(nome){
+  function urlAba(nome){
   const noCache = `nocache=${Date.now()}`;
   return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(nome)}&${noCache}`;
 }
 
-}
 
 function extrairJson(txt){
   const ini = txt.indexOf("{");
@@ -142,7 +141,7 @@ function relogio(){
 setInterval(relogio, 1000);
 relogio();
 
-async function carregar(aba){
+  async function carregar(aba){
   const r = await fetch(urlAba(aba), { cache: "no-store" });
   const t = await r.text();
   const j = extrairJson(t);
@@ -182,14 +181,14 @@ function montarTabela(targetId, table){
 async function atualizarTudo(){
   try{
     const [frota, dia, social] = await Promise.all([
-      carregar(ABAS.painel),
-      carregar(ABAS.agenda_do_dia),
-      carregar(ABAS.agenda serviço_social)
+      carregar(ABAS.frota),
+      carregar(ABAS.dia),
+      carregar(ABAS.social)
     ]);
 
-    montarTabela("painel", painel);
-    montarTabela("agenda_do_dia", agenda_do_dia);
-    montarTabela("agenda_serviço_Social", agenda_serviço_social);
+    montarTabela("frota", frota);
+    montarTabela("agendaDia", dia);
+    montarTabela("agendaSocial", social);
 
   }catch(e){
     console.error(e);
