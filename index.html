@@ -95,7 +95,7 @@ tbody td{
   <div class="grid">
 
     <div class="card">
-      <h2>Movimentação da Frota</h2>
+      <h2>Movimentação diária</h2>
       <div id="frota"></div>
     </div>
 
@@ -182,14 +182,14 @@ function montarTabela(targetId, table){
 async function atualizarTudo(){
   try{
     const [frota, dia, social] = await Promise.all([
-      carregar(ABAS.frota),
-      carregar(ABAS.dia),
-      carregar(ABAS.social)
+      carregar(ABAS.painel),
+      carregar(ABAS.agenda_do_dia),
+      carregar(ABAS.agenda serviço_social)
     ]);
 
-    montarTabela("frota", frota);
-    montarTabela("agendaDia", dia);
-    montarTabela("agendaSocial", social);
+    montarTabela("painel", painel);
+    montarTabela("agenda_do_dia", agenda_do_dia);
+    montarTabela("agenda_serviço_Social", agenda_serviço_social);
 
   }catch(e){
     console.error(e);
