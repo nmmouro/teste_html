@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Planilha limpa</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  body{font-family:system-ui,Segoe UI,Arial;background:#0b1220;color:#eef2ff;margin:0;padding:20px;}
+  .wrap{max-width:1200px;margin:0 auto;}
+  table{width:100%;border-collapse:collapse;background:rgba(255,255,255,0.03);border-radius:8px;overflow:hidden;}
+  thead th{background:rgba(255,255,255,0.04);text-align:left;padding:10px;font-weight:600}
+  tbody td{padding:8px;border-top:1px solid rgba(255,255,255,0.03)}
+  .small{font-size:13px;color:#cbd5e1}
+  .status-em{color:#f6e05e;font-weight:700}
+  .status-ok{color:#9ae6b4;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Painel — Planilha limpa</h1>
+    <p class="small" id="meta">Carregando...</p>
+    <div id="table-wrap"></div>
+  </div>
+
+<script>
+const SHEET_ID = "1avUZODKbGO0MfC2kh-YnuVHjZKUD9R3stnysR5o__JI"; // substitua
+const SHEET_NAME = "PAINEL";      // nome da aba (case sensitive)
+
+const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`;
+
+function parseGvizText(text){
+  // remove wrapper: google.visualization.Query.setResponse(...)
+  const json = JSON.parse(text.replace(/^[^{]*/,"").replace(/\);?\\s*$/,""));
+  return json.table;
+}
+
+async function load(){
+  try{
+    const r = await fetch(GVIZ_URL);
+    const txt = await r.text();
+    const table = parseGvizText(txt);
+    document.getElementById('meta').textContent = `Aba: ${SHEET_NAME} — ${table.rows.length} linhas`;
+    renderTable(table);
+  }catch(e){
+    document.getElementById('meta').textContent = 'Erro ao carregar: ' + e.message;
+  }
+}
+
+function renderTable(table){
+  const cols = table.cols.map(c => c.label || c.id || '');
+  const rows = table.rows.map(r => r.c.map(cell => cell && ('v' in cell ? cell.v : '') ));
+  const container = document.getElementById('table-wrap');
+  let html = '<table><thead><tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+  rows.forEach(r => {
+    html += '<tr>' + r.map((v,i) => {
+      const head = cols[i] ? cols[i].toLowerCase() : '';
+      if(head.includes('status')){
+        const cls = (v==='Em andamento') ? 'status-em' : (v==='Concluído') ? 'status-ok' : '';
+        return `<td class="${cls}">${v||''}</td>`;
+      }
+      return `<td>${v||''}</td>`;
+    }).join('') + '</tr>';
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+load();
+</script>
+</body>
+</html>
