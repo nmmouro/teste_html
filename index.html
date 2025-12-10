@@ -231,7 +231,8 @@
         (r.c || []).map(c => (c ? c.v : ""))
       );
 
-      renderTabela(divId, cols, rows);
+     renderTabela(divId, cols, rows, sheet);
+
     } catch (e) {
       document.getElementById(divId).innerHTML = "Erro ao carregar dados";
       console.error(sheet, e);
@@ -240,34 +241,50 @@
 
   /************** RENDER ***********************/
   function renderTabela(divId, cols, rows) {
-    const div = document.getElementById(divId);
+    function renderTabela(divId, cols, rows, nomeAba) {
+  const div = document.getElementById(divId);
 
-    let html = "<table><thead><tr>";
-    cols.forEach(c => html += `<th>${escapeHtml(c)}</th>`);
-    html += "</tr></thead><tbody>";
+  let html = "<table><thead><tr>";
+  cols.forEach(c => html += `<th>${escapeHtml(c)}</th>`);
+  html += "</tr></thead><tbody>";
 
-    rows.forEach(r => {
-      let classe = "";
-      const statusBruto = r[r.length - 1] ?? "";
-      const status = String(statusBruto).toLowerCase();
+  rows.forEach(r => {
+    let classe = "";
+    const statusBruto = r[r.length - 1] ?? "";
+    const status = String(statusBruto).toLowerCase();
 
-      if (status.includes("andamento")) classe = "status-andamento";
-      if (status.includes("concluído") || status.includes("concluido"))
-        classe = "status-concluido";
+    if (status.includes("andamento")) classe = "status-andamento";
+    if (status.includes("concluído") || status.includes("concluido"))
+      classe = "status-concluido";
 
-      html += `<tr class="${classe}">`;
+    html += `<tr class="${classe}">`;
 
-      r.forEach(cellValue => {
-        const valor = escapeHtml(formatCell(cellValue));
-        html += `<td>${valor}</td>`;
-      });
+    r.forEach((cellValue, idx) => {
+      let valor = formatCell(cellValue);
 
-      html += "</tr>";
+      // ✅ REGRA ESPECIAL: somente na AGENDA DO DIA → coluna HORA
+      if (
+        nomeAba === "AGENDA DO DIA" &&
+        cols[idx] &&
+        cols[idx].toLowerCase().includes("hora")
+      ) {
+        // extrai somente HH:MM de qualquer formato
+        const h = valor.match(/(\d{1,2}):(\d{2})/);
+        if (h) {
+          valor = `${h[1].padStart(2, "0")}:${h[2]}`;
+        }
+      }
+
+      html += `<td>${escapeHtml(valor)}</td>`;
     });
 
-    html += "</tbody></table>";
-    div.innerHTML = html;
-  }
+    html += "</tr>";
+  });
+
+  html += "</tbody></table>";
+  div.innerHTML = html;
+}
+
 
   /************** AUTO REFRESH *****************/
   function atualizarTudo() {
