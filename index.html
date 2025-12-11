@@ -93,14 +93,6 @@
       font-weight: bold;
     }
 
-.status-cancelado {
-  background: #7f1d1d !important;
-  color: #fff !important;
-  text-decoration: line-through;
-  opacity: 0.85;
-}
-
-
     
   </style>
 </head>
@@ -201,13 +193,7 @@ function renderTabela(divId, sheetName) {
         if (status.includes("concluido") || status.includes("concluido")) classe = "status-concluido";
         
 
-// ✅ aplicar apenas nas abas de agenda
-  if (sheetName === "AGENDA DO DIA" || sheetName === "AGENDA SERVIÇO SOCIAL") {
-  if (status.includes("cancelado")) classe = "status-cancelado";
-}
-
-
-        
+       
         html += `<tr class="${classe}">`;
 
         r.forEach((cell, idx) => {
