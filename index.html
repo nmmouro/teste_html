@@ -1,225 +1,145 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Painel Frota - Tempo Real</title>
-
-  <meta http-equiv="refresh" content="300">
-
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
-
-    body {
-      background: #0f172a;
-      color: #fff;
-      overflow: hidden;
-    }
-
-    .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 15px 30px;
-      background: #020617;
-    }
-
-    .header img {
-      height: 60px;
-    }
-
-    .titulo {
-      text-align: center;
-    }
-
-    .titulo h1 {
-      font-size: 28px;
-    }
-
-    .relogio {
-      text-align: right;
-      font-size: 20px;
-      font-weight: bold;
-    }
-
-    .painel {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 15px;
-      padding: 15px;
-      height: calc(100vh - 100px);
-    }
-
-    .box {
-      background: #020617;
-      border-radius: 15px;
-      padding: 10px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .box h2 {
-      text-align: center;
-      margin-bottom: 10px;
-      font-size: 18px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12px;
-    }
-
-    th, td {
-      padding: 6px;
-      border-bottom: 1px solid #1e293b;
-      text-align: center;
-      white-space: nowrap;
-    }
-
-    th {
-      background: #020617;
-    }
-
-    .status-andamento {
-      background: #a16207 !important;
-      color: #fff;
-      font-weight: bold;
-    }
-
-    .status-concluido {
-      background: #166534 !important;
-      color: #fff;
-      font-weight: bold;
-    }
-
-    
-  </style>
-</head>
-
-<body>
-
-  <div class="header">
-    <img src="logo.png" alt="Logo">
-    <div class="titulo">
-      <h1>PAINEL DE SAÍDAS</h1>
-      <div id="dataHora"></div>
-    </div>
-    <div class="relogio" id="diaSemana"></div>
-  </div>
-
-  <div class="painel">
-    <div class="box">
-      <h2>PAINEL</h2>
-      <div id="painel"></div>
-    </div>
-    <div class="box">
-      <h2>AGENDA DO DIA</h2>
-      <div id="agendaDia"></div>
-    </div>
-    <div class="box">
-      <h2>AGENDA SERVIÇO SOCIAL</h2>
-      <div id="agendaSS"></div>
-    </div>
-  </div>
-
-<script>
-const SHEET_ID = "1Ch3AjQ0MDo4WuQWFDR3r8nZrHb4yQkSLOtT5_QgxT6E";
-
-const abas = {
-  "PAINEL": "PAINEL",
-  "AGENDA DO DIA": "AGENDA DO DIA",
-  "AGENDA SERVIÇO SOCIAL": "AGENDA SERVIÇO SOCIAL"
-};
-
-function atualizarRelogio() {
-  const agora = new Date();
-  document.getElementById("dataHora").innerHTML =
-    agora.toLocaleDateString("pt-BR") + "  -  " +
-    agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-
-  document.getElementById("diaSemana").innerHTML =
-    agora.toLocaleDateString("pt-BR", { weekday: "long" });
-}
-
-setInterval(atualizarRelogio, 1000);
-atualizarRelogio();
-
-function escapeHtml(text) {
-  const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;" };
-  return text.replace(/[&<>]/g, m => map[m]);
-}
-
-function formatCell(value, somenteHora = false) {
-  if (!value) return "";
-
-  const v = String(value);
-
-  const match = v.match(/Date\((\d+),(\d+),(\d+),?(\d*)?,?(\d*)?,?(\d*)?\)/);
-  if (match) {
-    const ano = match[1];
-    const mes = String(Number(match[2]) + 1).padStart(2, "0");
-    const dia = String(match[3]).padStart(2, "0");
-    const hora = match[4] ? String(match[4]).padStart(2, "0") : "00";
-    const minuto = match[5] ? String(match[5]).padStart(2, "0") : "00";
-
-    if (somenteHora) return `${hora}:${minuto}`;
-    return `${dia}/${mes}/${ano}`;
+<meta charset="UTF-8">
+<title>Visualização de Planilha</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+    background: #f5f5f5;
   }
 
-  return v;
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 40px;
+    background: white;
+  }
+
+  th, td {
+    border: 1px solid #ccc;
+    padding: 6px 10px;
+    text-align: left;
+  }
+
+  th {
+    background: #eee;
+  }
+
+  /* ===== Estilo para LINHA CANCELADA ===== */
+  .cancelado {
+    background: #ffb3b3 !important;
+    animation: piscar 1s infinite;
+  }
+
+  @keyframes piscar {
+    0% { background: #ffb3b3; }
+    50% { background: #ffffff; }
+    100% { background: #ffb3b3; }
+  }
+</style>
+</head>
+<body>
+
+<h2 id="titulo"></h2>
+<div id="conteudo"></div>
+
+<script>
+/* ======================================================
+   FUNÇÃO PARA ESCAPAR HTML
+====================================================== */
+function escapeHtml(text) {
+  if (typeof text !== "string") return text;
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
-function renderTabela(divId, sheetName) {
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}&nocache=${Date.now()}`;
+/* ======================================================
+   FORMATAÇÃO DE CELULAS: DATA / HORA
+====================================================== */
+function formatCell(value, somenteHora = false) {
+  if (typeof value === "string" && value.startsWith("Date(")) {
+    const partes = value.match(/Date\((\d+),(\d+),(\d+)(?:,(\d+),(\d+),(\d+))?\)/);
 
-  fetch(url)
-    .then(r => r.text())
-    .then(text => {
-      const jsonText = text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1);
-      const data = JSON.parse(jsonText);
+    if (partes) {
+      const ano = Number(partes[1]);
+      const mes = Number(partes[2]) + 1;
+      const dia = Number(partes[3]);
+      const hora = Number(partes[4] || 0);
+      const min = Number(partes[5] || 0);
 
-      const cols = data.table.cols.map(c => c.label || "");
-      const rows = data.table.rows.map(r => r.c.map(c => c ? c.v : ""));
+      if (somenteHora) {
+        return String(hora).padStart(2, "0") + ":" + String(min).padStart(2, "0");
+      }
 
-      let html = "<table><thead><tr>";
-      cols.forEach(c => html += `<th>${escapeHtml(c)}</th>`);
-      html += "</tr></thead><tbody>";
+      return (
+        String(dia).padStart(2, "0") + "/" +
+        String(mes).padStart(2, "0") + "/" +
+        ano
+      );
+    }
+  }
 
-      rows.forEach(r => {
-        let classe = "";
-        const status = String(r[r.length - 1] || "").toLowerCase();
-        if (status.includes("andamento")) classe = "status-andamento";
-        if (status.includes("concluido") || status.includes("concluido")) classe = "status-concluido";
-        
+  return value;
+}
 
-       
-        html += `<tr class="${classe}">`;
+/* ======================================================
+   RENDERIZA A TABELA
+====================================================== */
+function renderSheet(sheetName, data) {
+  const conteudo = document.getElementById("conteudo");
+  let html = `<h3>${sheetName}</h3><table>`;
 
-        r.forEach((cell, idx) => {
-          const somenteHora =
-            (sheetName === "AGENDA DO DIA"  || sheetName === "PAINEL") &&
-            cols[idx].toLowerCase().includes("hora"));
-          const valor = formatCell(cell, somenteHora);
-          html += `<td>${escapeHtml(valor)}</td>`;
-        });
+  const cols = data[0];
+  html += "<tr>";
+  cols.forEach(c => html += `<th>${escapeHtml(c)}</th>`);
+  html += "</tr>";
 
-        html += "</tr>";
-      });
+  data.slice(1).forEach(r => {
+    const linhaTexto = r.join(" ").toLowerCase();
+    const classeCancelado = linhaTexto.includes("cancelado") ? "cancelado" : "";
 
-      html += "</tbody></table>";
-      document.getElementById(divId).innerHTML = html;
+    html += `<tr class="${classeCancelado}">`;
+
+    r.forEach((cell, idx) => {
+      const somenteHora =
+        ((sheetName === "AGENDA DO DIA" || sheetName === "PAINEL") &&
+         cols[idx].toLowerCase().includes("hora"));
+
+      const valor = formatCell(cell, somenteHora);
+      html += `<td>${escapeHtml(valor)}</td>`;
     });
+
+    html += "</tr>";
+  });
+
+  html += "</table>";
+  conteudo.innerHTML += html;
 }
 
-function carregarTudo() {
-  renderTabela("painel", abas["PAINEL"]);
-  renderTabela("agendaDia", abas["AGENDA DO DIA"]);
-  renderTabela("agendaSS", abas["AGENDA SERVIÇO SOCIAL"]);
+/* ======================================================
+   CARREGAMENTO SIMULADO (substitua pelo fetch real)
+====================================================== */
+async function carregar() {
+  document.getElementById("titulo").innerText = "Carregando dados da planilha...";
+
+  /* Aqui você usa fetch() na sua API real.
+     Vou deixar um exemplo de estrutura: */
+
+  const resposta = await fetch("dados.json");
+  const planilhas = await resposta.json();
+
+  document.getElementById("titulo").innerText = "Visualização da Planilha";
+
+  Object.keys(planilhas).forEach(sheetName => {
+    renderSheet(sheetName, planilhas[sheetName]);
+  });
 }
 
-carregarTudo();
-setInterval(carregarTudo, 60000);
+carregar();
 </script>
 
 </body>
