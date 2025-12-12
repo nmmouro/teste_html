@@ -129,6 +129,8 @@ async function carregar() {
   /* Aqui você usa fetch() na sua API real.
      Vou deixar um exemplo de estrutura: */
 
+  const SHEET_ID = "1Ch3AjQ0MDo4WuQWFDR3r8nZrHb4yQkSLOtT5_QgxT6E";
+
   const resposta = await fetch("dados.json");
   const planilhas = await resposta.json();
 
