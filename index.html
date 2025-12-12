@@ -1,194 +1,251 @@
-<!DOCTYPE html>
-<html lang="pt-br">
+<!doctype html>
+<html lang="pt-BR">
 <head>
-<meta charset="UTF-8" />
-<meta http-equiv="refresh" content="60"> <!-- Atualiza a página a cada 60s -->
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Painel Integrado</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Painel - Frota (GViz)</title>
+
+<!-- evitar cache no GitHub Pages -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
 
 <style>
-  body {
-    font-family: Arial, sans-serif;
-    background: #111;
-    color: #fff;
-    margin: 0;
-    padding: 0;
+  :root{
+    --bg:#071029; --card:#081428; --muted:#9fb7cf;
+    --accent:#00eaff; --danger:#9b1111;
   }
-
-  h1 {
-    text-align: center;
-    margin-top: 20px;
-    color: #00eaff;
-  }
-
-  .logo {
-    width: 180px;
-    display: block;
-    margin: 20px auto;
-  }
-
-  table {
-    width: 95%;
-    margin: 20px auto;
-    border-collapse: collapse;
-    font-size: 20px;
-  }
-
-  th {
-    background: #004d73;
-    padding: 10px;
-  }
-
-  td {
-    padding: 8px;
-    border-bottom: 1px solid #333;
-  }
-
-  tr.cancelado {
-    background: #7a0000 !important;
-    color: #fff;
-    animation: blink 1.2s infinite;
-  }
-
-  @keyframes blink {
-    0% { opacity: 1; }
-    40% { opacity: .2; }
-    100% { opacity: 1; }
+  html,body{height:100%;margin:0;background:var(--bg);color:#fff;font-family:Inter,Segoe UI,Arial,sans-serif}
+  header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:#020617;border-bottom:1px solid rgba(255,255,255,0.03)}
+  header img{height:56px}
+  header .title{font-size:20px;font-weight:700;color:var(--accent)}
+  header .clock{font-size:16px;color:var(--muted)}
+  main{padding:12px;display:grid;grid-template-rows:1fr 1fr 1fr;gap:12px;height:calc(100vh - 92px);box-sizing:border-box}
+  .card{background:var(--card);border-radius:10px;padding:12px;overflow:auto}
+  .card h2{margin:0 0 8px;color:var(--accent);font-size:18px;text-align:center}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  thead th{position:sticky;top:0;background:rgba(255,255,255,0.02);padding:8px;text-align:left;font-weight:700}
+  td{padding:8px;border-bottom:1px solid rgba(255,255,255,0.03);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  tr.status-andamento{background: rgba(255,165,0,0.06)}
+  tr.status-concluido{background: rgba(0,200,120,0.06)}
+  @keyframes piscarCancelado {0%{opacity:1}50%{opacity:.3}100%{opacity:1}}
+  tr.status-cancelado{background: rgba(155,17,17,0.18);text-decoration:line-through;animation:piscarCancelado 1s infinite}
+  .small{font-size:12px;color:var(--muted);text-align:center;margin-top:6px}
+  /* responsivo: se altura pequena, reduzir fonte */
+  @media (max-height:700px){
+    td,thead th{padding:6px;font-size:12px}
   }
 </style>
 </head>
-
 <body>
 
-<img src="logo.png" class="logo">
+<header>
+  <img src="logo.png" alt="Logo (coloque logo.png na mesma pasta)" onerror="this.style.display='none'">
+  <div class="title">Painel de Movimentação — Frota</div>
+  <div class="clock" id="clock">--:--</div>
+</header>
 
-<h1>PAINEL</h1>
-<table id="PAINEL"></table>
+<main>
+  <section class="card" id="card-painel">
+    <h2>PAINEL</h2>
+    <div id="painel">Carregando...</div>
+  </section>
 
-<h1>AGENDA DO DIA</h1>
-<table id="AGENDA_DO_DIA"></table>
+  <section class="card" id="card-agenda">
+    <h2>AGENDA DO DIA</h2>
+    <div id="agenda">Carregando...</div>
+  </section>
 
-<h1>AGENDA SERVIÇO SOCIAL</h1>
-<table id="AGENDA_SERVICO_SOCIAL"></table>
+  <section class="card" id="card-ss">
+    <h2>AGENDA SERVIÇO SOCIAL</h2>
+    <div id="social">Carregando...</div>
+  </section>
+</main>
+
+<div class="small">Atualização automática a cada 60s • Fonte: Google Sheets (GViz)</div>
 
 <script>
-// ----------------------------
-// Função para converter Date()
-// ----------------------------
-function parseGoogleDate(value) {
-  if (typeof value !== "string") return value;
+/* ============================
+   CONFIG — coloque seu Sheet ID
+   ============================ */
+const SHEET_ID = "1Ch3AjQ0MDo4WuQWFDR3r8nZrHb4yQkSLOtT5_QgxT6E";
 
-  const d = value.match(/Date\((\d+),(\d+),(\d+)(?:,(\d+),(\d+),(\d+))?\)/);
-  if (!d) return value;
+/* nomes exatos das abas (case-sensitive) */
+const TAB_PAINEL = "PAINEL";
+const TAB_AGENDA = "AGENDA DO DIA";
+const TAB_SS = "AGENDA SERVIÇO SOCIAL";
 
-  const ano = Number(d[1]);
-  const mes = Number(d[2]);
-  const dia = Number(d[3]);
-  const hora = Number(d[4] ?? 0);
-  const min = Number(d[5] ?? 0);
+/* ============================
+   RELÓGIO (pt-BR)
+   ============================ */
+function updateClock(){
+  const now = new Date();
+  const optsDate = { day:"2-digit", month:"2-digit", year:"numeric" };
+  const optsTime = { hour:"2-digit", minute:"2-digit", second:"2-digit" };
+  document.getElementById("clock").textContent = now.toLocaleDateString("pt-BR",optsDate) + " — " + now.toLocaleTimeString("pt-BR",optsTime);
+}
+setInterval(updateClock,1000);
+updateClock();
 
-  // CORRIGE:
-  // Se for Date(1899...), então é só hora
-  if (ano === 1899) {
-    return `${String(hora).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+/* ============================
+   Helpers: escape + parse gviz robusto
+   ============================ */
+function escapeHtml(s){ return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+function parseGvizText(text){
+  // procura primeiro "{" e último "}" e parseia
+  const first = text.indexOf("{");
+  const last  = text.lastIndexOf("}");
+  if (first === -1 || last === -1) throw new Error("Resposta inesperada do Google Sheets");
+  const jsonText = text.substring(first, last+1);
+  return JSON.parse(jsonText);
+}
+
+/* ============================
+   Formatação robusta de célula
+   - trata Date(yyyy,mm,dd[,HH,MM,SS])
+   - trata TimeOfDay(H,M,S)
+   - trata ISO YYYY-MM-DD[T ]HH:MM:SS
+   - somenteHora flag: se true, retorna apenas HH:MM quando aplicável
+   ============================ */
+function formatCell(raw, somenteHora=false){
+  if (raw === null || raw === undefined) return "";
+
+  // objetos com v/f
+  if (typeof raw === "object"){
+    if ("v" in raw) return formatCell(raw.v, somenteHora);
+    if ("f" in raw) return formatCell(raw.f, somenteHora);
+    try { return JSON.stringify(raw); } catch(e){ return String(raw); }
   }
 
-  // Se for data real
-  return `${String(dia).padStart(2, "0")}/${String(mes + 1).padStart(2, "0")}/${ano}`;
-}
+  const s = String(raw).trim();
 
-// ----------------------------
-// Funciona também para hora isolada
-// ----------------------------
-function formatHoraSeNecessario(value) {
-  if (typeof value !== "string") return value;
+  // Date(YYYY,MM,DD[,HH,MM,SS])
+  const dateMatch = s.match(/^Date\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*(\d+)\s*)?)?\)/);
+  if (dateMatch){
+    const ano = Number(dateMatch[1]);
+    const mes0 = Number(dateMatch[2]); // 0-based
+    const dia = Number(dateMatch[3]);
+    const hh = dateMatch[4] !== undefined ? Number(dateMatch[4]) : null;
+    const mm = dateMatch[5] !== undefined ? Number(dateMatch[5]) : 0;
 
-  const d = value.match(/Date\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)/);
-  if (!d) return value;
+    // Se ano = 1899 (sheet time-only), retornar HH:MM
+    if (ano === 1899){
+      if (somenteHora) return `${String(hh ?? 0).padStart(2,"0")}:${String(mm).padStart(2,"0")}`;
+      // se não pedir somenteHora, ainda retornar só hora (evitar mostrar '30/12/1899')
+      return `${String(hh ?? 0).padStart(2,"0")}:${String(mm).padStart(2,"0")}`;
+    }
 
-  const h = String(Number(d[4])).padStart(2, "0");
-  const m = String(Number(d[5])).padStart(2, "0");
-
-  return `${h}:${m}`;
-}
-
-// ----------------------------
-// Escape HTML contra quebras de layout
-// ----------------------------
-function escapeHtml(text) {
-  if (!text) return text;
-  return text
-    .toString()
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-// ----------------------------
-// Carregar dados JSON
-// ----------------------------
-async function loadData() {
-  try {
-    const resp = await fetch("./dados.json?nocache=" + Date.now());
-    const data = await resp.json();
-
-    renderTable("PAINEL", data["PAINEL"]);
-    renderTable("AGENDA_DO_DIA", data["AGENDA DO DIA"]);
-    renderTable("AGENDA_SERVICO_SOCIAL", data["AGENDA SERVIÇO SOCIAL"]);
-
-  } catch (e) {
-    console.error("Erro ao carregar dados.json:", e);
-  }
-}
-
-// ----------------------------
-// Renderizar em tabela HTML
-// ----------------------------
-function renderTable(id, dataset) {
-  const table = document.getElementById(id);
-  if (!dataset) {
-    table.innerHTML = "<tr><td>Sem dados</td></tr>";
-    return;
+    // data real
+    if (hh !== null && somenteHora){
+      // se pediram somente hora e a data tem hora, retornar HH:MM
+      return `${String(hh).padStart(2,"0")}:${String(mm).padStart(2,"0")}`;
+    }
+    const mes = String(mes0 + 1).padStart(2,"0");
+    return `${String(dia).padStart(2,"0")}/${mes}/${ano}` + (hh !== null ? ` ${String(hh).padStart(2,"0")}:${String(mm).padStart(2,"0")}` : "");
   }
 
-  let html = "<tr>";
-  dataset.cols.forEach(c => {
-    html += `<th>${escapeHtml(c)}</th>`;
-  });
-  html += "</tr>";
+  // TimeOfDay(H,M,S)
+  const timeMatch = s.match(/^TimeOfDay\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/);
+  if (timeMatch){
+    const hh = String(timeMatch[1]).padStart(2,"0");
+    const mm = String(timeMatch[2]).padStart(2,"0");
+    return somenteHora ? `${hh}:${mm}` : `${hh}:${mm}:${String(timeMatch[3]).padStart(2,"0")}`;
+  }
 
-  dataset.rows.forEach(row => {
-    const textoLinha = row.map(v => ("" + v).toLowerCase()).join(" ");
-    const isCancelado = textoLinha.includes("cancelado");
+  // ISO date/datetime YYYY-MM-DD[ T hh:mm:ss]
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2}):?(\d{2})?)?/);
+  if (iso){
+    const ano = iso[1], mes = iso[2], dia = iso[3];
+    if (iso[4]){
+      const hh = String(iso[4]).padStart(2,"0"), mm = String(iso[5] ?? "00").padStart(2,"0");
+      return somenteHora ? `${hh}:${mm}` : `${dia}/${mes}/${ano} ${hh}:${mm}`;
+    }
+    return `${dia}/${mes}/${ano}`;
+  }
 
-    html += `<tr class="${isCancelado ? "cancelado" : ""}">`;
+  // fallback: texto puro
+  return s;
+}
 
-    row.forEach((cell, index) => {
-      const colName = dataset.cols[index].toLowerCase();
-      let val = cell;
+/* ============================
+   Render genérico
+   - aplica regra somenteHora para colunas cujo header inclua "hora"
+   - regra válida em PAINEL e AGENDA DO DIA (conforme sua solicitação)
+   - status styling (andamento, concluído, cancelado) para agendas e painel
+   ============================ */
+function renderTable(containerId, sheetName, gvizJson){
+  const cols = (gvizJson.table.cols || []).map(c => c.label || "");
+  const rows = (gvizJson.table.rows || []).map(r => (r.c || []).map(cell => (cell ? cell.v : "")));
 
-      // Detecta CAMPOS DE HORA
-      const somenteHora =
-        colName.includes("hora") &&
-        (id === "PAINEL" || id === "AGENDA_DO_DIA" || id === "AGENDA_SERVICO_SOCIAL");
+  // build HTML table
+  let html = "<table><thead><tr>";
+  cols.forEach(h => html += `<th>${escapeHtml(h)}</th>`);
+  html += "</tr></thead><tbody>";
 
-      if (somenteHora) {
-        val = formatHoraSeNecessario(cell);
-      } else {
-        val = parseGoogleDate(cell);
-      }
+  rows.forEach(row => {
+    // status from last column (if exists)
+    const rawStatus = String(row[row.length - 1] ?? "").toLowerCase();
+    let classe = "";
+    if (rawStatus.includes("andamento")) classe = "status-andamento";
+    if (rawStatus.includes("concluído") || rawStatus.includes("concluido")) classe = "status-concluido";
+    if (rawStatus.includes("cancelado")) classe = "status-cancelado";
 
-      html += `<td>${escapeHtml(val)}</td>`;
+    html += `<tr class="${classe}">`;
+
+    row.forEach((cell, idx) => {
+      // determine if this column is "Hora" and rule applies (PAINEL or AGENDA DO DIA)
+      const header = cols[idx] || "";
+      const isHoraColumn = /hora/i.test(header);
+      const appliesHoraRule = isHoraColumn && (sheetName === TAB_PAINEL || sheetName === TAB_AGENDA);
+
+      const formatted = formatCell(cell, appliesHoraRule);
+      html += `<td>${escapeHtml(formatted)}</td>`;
     });
 
     html += "</tr>";
   });
 
-  table.innerHTML = html;
+  html += "</tbody></table>";
+  document.getElementById(containerId).innerHTML = html;
 }
 
-// ----------------------------
-loadData();
-// ----------------------------
+/* ============================
+   Fetch each sheet with nocache (robusto)
+   ============================ */
+async function fetchSheet(sheetName){
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}&nocache=${Date.now()}`;
+  const res = await fetch(url, { cache: "no-store", mode: "cors" });
+  const text = await res.text();
+  const parsed = parseGvizText(text);
+  return parsed;
+}
+
+/* ============================
+   Main loader
+   ============================ */
+async function loadAll(){
+  try{
+    const [gPainel, gAgenda, gSS] = await Promise.all([
+      fetchSheet(TAB_PAINEL),
+      fetchSheet(TAB_AGENDA),
+      fetchSheet(TAB_SS)
+    ]);
+
+    renderTable("painel", TAB_PAINEL, gPainel);
+    renderTable("agenda", TAB_AGENDA, gAgenda);
+    renderTable("social", TAB_SS, gSS);
+  } catch(err){
+    console.error("Erro ao carregar sheets:", err);
+    document.getElementById("painel").innerText = "Erro ao carregar dados";
+    document.getElementById("agenda").innerText = "Erro ao carregar dados";
+    document.getElementById("social").innerText = "Erro ao carregar dados";
+  }
+}
+
+/* initial + interval */
+loadAll();
+setInterval(loadAll, 60000); // 60s
 </script>
 </body>
 </html>
