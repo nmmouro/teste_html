@@ -173,7 +173,7 @@ const TAB_SS = "AGENDA SERVIÇO SOCIAL";
 function updateClock(){
   const now = new Date();
   const optsDate = { day:"2-digit", month:"2-digit", year:"numeric" };
-  const optsTime = { hour:"2-digit", minute:"2-digit", second:"2-digit" };
+  const optsTime = { hour:"2-digit", minute:"2-digit"};
   document.getElementById("clock").textContent = now.toLocaleDateString("pt-BR",optsDate) + " — " + now.toLocaleTimeString("pt-BR",optsTime);
 }
 setInterval(updateClock,1000);
